@@ -1,0 +1,671 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bear Clan 25 Hour Stream Scheduler</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+                tailwind.config = {
+                    theme: {
+                        extend: {
+                            colors: {
+                                extralife: {
+                                    400: '#38bdf8',
+                                    500: '#00aeef',
+                                    600: '#0088cc',
+                                    700: '#006699',
+                                    glow: 'rgba(0, 174, 239, 0.25)'
+                                }
+                            }
+                        }
+                    }
+                }
+    </script>
+    <style>
+        .drag-over {
+            border: 2px dashed #00aeef !important;
+            background-color: rgba(0, 174, 239, 0.1) !important;
+        }
+
+        .trash-drag-over {
+            border-color: #ef4444 !important;
+            background-color: rgba(239, 68, 68, 0.2) !important;
+            color: #f87171 !important;
+        }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased selection:bg-extralife-500 selection:text-white pb-12">
+
+    <!-- Top Header & Controls -->
+    <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-30 shadow-lg shadow-extralife-glow/10">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+
+            <!-- Custom Branding Section -->
+            <div class="flex items-center space-x-3">
+                <!-- Custom PNG Logo -->
+                <div class="bg-extralife-500/10 p-1.5 rounded-xl border border-extralife-500/30 shadow-md flex items-center justify-center">
+                    <img src="logo3.png" alt="Bear Clan Logo" class="h-9 w-auto object-contain">
+                </div>
+
+                <!-- Title & Subtitle Text -->
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                        Bear Clan 25 Hour Stream
+                        <span class="text-xs uppercase px-2 py-0.5 rounded-full bg-extralife-500/20 text-extralife-400 border border-extralife-500/30 font-semibold">Extra Life</span>
+                    </h1>
+                    <p class="text-xs text-slate-400"> &bull; Stream Scheduler &bull; </p>
+                </div>
+            </div>
+
+            <!-- Quick Stats & Mode Toggle -->
+            <div class="flex items-center gap-4">
+                <div class="hidden md:flex items-center gap-3 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-300">
+                    <div>Filled: <span id="stat-filled" class="font-bold text-extralife-400">0</span>/25 hrs</div>
+                    <div class="h-3 w-px bg-slate-800"></div>
+                    <div>Games Submitted: <span id="stat-submissions" class="font-bold text-sky-400">0</span></div>
+                </div>
+
+                <div class="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-800">
+                    <button id="mode-viewer" onclick="setMode('viewer')" class="px-3 py-1 text-xs font-medium rounded-md transition-all bg-extralife-500 text-white shadow shadow-extralife-glow">
+                        Viewer Mode
+                    </button>
+                    <button id="mode-admin" onclick="requestAdminAccess()" class="px-3 py-1 text-xs font-medium rounded-md transition-all text-slate-400 hover:text-white">
+                        KatowJo Mode
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 mt-4 space-y-6">
+
+        <!-- TIMELINE SECTION (Horizontal Grid: 3 rows of 6, 1 row of 7) -->
+        <section class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl relative overflow-hidden">
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                    <h2 class="text-sm font-bold uppercase tracking-wider text-extralife-400">25-Hour Stream Schedule</h2>
+                    <span class="text-xs text-slate-400">(Drag games into slots, adjacent identical games auto-merge into blocks)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="openCustomBlockModal()" id="btn-custom-block" class="hidden text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded border border-slate-700 transition">
+                        + Add Custom Block
+                    </button>
+                    <button onclick="resetTimeline()" id="btn-reset-timeline" class="hidden text-xs bg-red-950/50 hover:bg-red-900/50 text-red-300 px-2.5 py-1 rounded border border-red-800/50 transition">
+                        Reset Timeline
+                    </button>
+                </div>
+            </div>
+
+            <!-- Horizontal Grid Container -->
+            <div id="timeline-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2">
+                <!-- Injected via JS -->
+            </div>
+        </section>
+
+        <!-- BOTTOM SECTION: SUBMISSION FORM & COMMUNITY POOL -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- Left 1 Col: Game Submission Form -->
+            <section class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl flex flex-col justify-between">
+                <div>
+                    <h2 class="text-sm font-bold uppercase tracking-wider text-extralife-400 mb-1">Suggest a Game</h2>
+                    <p class="text-xs text-slate-400 mb-4">Submit games for KatowJo to add to the marathon!</p>
+
+                    <form id="submission-form" onsubmit="handleGameSubmission(event)" class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Game / Activity Title *</label>
+                            <input type="text" id="sub-title" required class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-extralife-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Your Gamertag *</label>
+                            <input type="text" id="sub-author" required class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-extralife-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Number of Players</label>
+                            <select id="sub-players" class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-extralife-500">
+                                <option value="1 Player">1 Player</option>
+                                <option value="2 Players">2 Players</option>
+                                <option value="3 Players">3 Players</option>
+                                <option value="4 Players">4 Players</option>
+                                <option value="5 Players">5 Players</option>
+                                <option value="6 Players">6 Players</option>
+                                <option value="7 Players">7 Players</option>
+                                <option value="8 Players">8 Players</option>
+                                <option value="9+ Players">9+ Players</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Notes</label>
+                            <input type="text" id="sub-notes" class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-extralife-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Game Thumbnail / Image</label>
+                            <input type="file" id="sub-image" accept="image/*" class="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-extralife-500 file:text-white hover:file:bg-extralife-600 file:cursor-pointer">
+                        </div>
+
+                        <button type="submit" class="w-full bg-extralife-500 hover:bg-extralife-600 text-white font-medium py-2 rounded text-xs transition shadow-lg shadow-extralife-glow">
+                            Submit to Stream Pool
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Right 2 Cols: Community Game Pool -->
+            <section class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl flex flex-col">
+                <div class="flex items-center justify-between mb-3 gap-2">
+                    <div>
+                        <h2 class="text-sm font-bold uppercase tracking-wider text-extralife-400">Community Submission Pool</h2>
+                        <p class="text-xs text-slate-400">Drag items into timeline slots (KatowJo Mode) or preview suggestions.</p>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <!-- Admin Drag-to-Delete Trash Dropzone -->
+                        <div id="trash-zone" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-950/20 text-red-400 text-xs font-medium transition-all">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            <span>Drag Here to Delete</span>
+                        </div>
+
+                        <span id="pool-count" class="text-xs bg-slate-800 px-2.5 py-1 rounded-full text-extralife-400 font-medium whitespace-nowrap">0 games available</span>
+                    </div>
+                </div>
+
+                <div id="game-pool" class="grid grid-cols-1 md:grid-cols-2 gap-3 overflow-y-auto max-h-[420px] p-1 flex-1">
+                    <!-- Populated dynamically -->
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Custom Block Modal -->
+    <div id="custom-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full p-5 shadow-2xl">
+            <h3 class="text-base font-bold text-white mb-3">Add Custom Schedule Segment</h3>
+            <form onsubmit="handleCustomBlock(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs text-slate-300 mb-1">Segment Title</label>
+                    <input type="text" id="modal-title" required class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-sm text-slate-100">
+                </div>
+                <div class="flex justify-end gap-2 mt-4">
+                    <button type="button" onclick="closeCustomBlockModal()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs rounded text-slate-300">Cancel</button>
+                    <button type="submit" class="px-3 py-1.5 bg-extralife-500 hover:bg-extralife-600 text-xs rounded text-white font-medium">Add to Pool</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Password Modal for KatowJo Mode -->
+    <div id="password-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl max-w-xs w-full p-5 shadow-2xl">
+            <div class="text-center mb-4">
+                <div class="inline-flex p-2 rounded-full bg-extralife-500/10 text-extralife-400 border border-extralife-500/20 mb-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                </div>
+                <h3 class="text-sm font-bold text-white">KatowJo Login</h3>
+                <p class="text-xs text-slate-400 mt-0.5">Enter password to manage stream schedule</p>
+            </div>
+            <form onsubmit="verifyAdminPassword(event)" class="space-y-3">
+                <div>
+                    <input type="password" id="admin-pass-input" placeholder="Password" required class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-extralife-500 text-center">
+                </div>
+                <p id="pass-error" class="text-[11px] text-red-400 text-center hidden">Incorrect password. Try again!</p>
+                <div class="flex gap-2 pt-1">
+                    <button type="button" onclick="closePasswordModal()" class="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs rounded text-slate-300">Cancel</button>
+                    <button type="submit" class="flex-1 py-1.5 bg-extralife-500 hover:bg-extralife-600 text-xs rounded text-white font-medium">Log In</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+                let currentMode = 'viewer';
+                const ADMIN_PASSWORD = "ExtraLyfe!";
+
+                // 25 Hours setup
+                let timeline = Array.from({length: 25}, (_, i) => {
+                    const startHour = (12 + i) % 24;
+                    const ampm = startHour >= 12 ? 'PM' : 'AM';
+                    const displayHour = startHour % 12 === 0 ? 12 : startHour % 12;
+                    const dayNum = i < 12 ? 1 : 2;
+                    return {
+                        hourIndex: i,
+                        timeLabel: `${displayHour}:00 ${ampm} (Day ${dayNum})`,
+                        assignedGame: null,
+                        splitOverride: false
+                    };
+                });
+
+                // Initial sample pool items
+                let gamePool = [
+                    { id: 'g1', title: 'Halo 3 Legendary Co-op', author: 'PixelKnight', players: '4 Players', notes: 'Try to beat scarab gun easter egg', image: null },
+                    { id: 'g2', title: 'Hades Speedrun Race', author: 'SpeedyGamer', players: '1 Player', notes: 'Sub 20-minute escape attempt', image: null },
+                    { id: 'g3', title: 'Minecraft Hardcore Survival', author: 'BlockBuilder', players: '8 Players', notes: 'Build a charity monument', image: null },
+                    { id: 'g4', title: 'Opening Ceremony & Goals', author: 'StreamTeam', players: '1 Player', notes: 'Kickoff and donation incentive review', image: null }
+                ];
+
+                function initApp() {
+                    loadFromStorage();
+                    setupTrashZone();
+                    renderTimeline();
+                    renderPool();
+                    updateStats();
+                }
+
+                function requestAdminAccess() {
+                    if (currentMode === 'admin') return;
+                    document.getElementById('pass-error').classList.add('hidden');
+                    document.getElementById('admin-pass-input').value = '';
+                    document.getElementById('password-modal').classList.remove('hidden');
+                    document.getElementById('password-modal').classList.add('flex');
+                    setTimeout(() => document.getElementById('admin-pass-input').focus(), 100);
+                }
+
+                function closePasswordModal() {
+                    document.getElementById('password-modal').classList.add('hidden');
+                    document.getElementById('password-modal').classList.remove('flex');
+                }
+
+                function verifyAdminPassword(e) {
+                    e.preventDefault();
+                    const inputPass = document.getElementById('admin-pass-input').value;
+                    if (inputPass === ADMIN_PASSWORD) {
+                        closePasswordModal();
+                        setMode('admin');
+                    } else {
+                        document.getElementById('pass-error').classList.remove('hidden');
+                        document.getElementById('admin-pass-input').value = '';
+                        document.getElementById('admin-pass-input').focus();
+                    }
+                }
+
+                function setMode(mode) {
+                    currentMode = mode;
+                    const btnViewer = document.getElementById('mode-viewer');
+                    const btnAdmin = document.getElementById('mode-admin');
+                    const btnCustom = document.getElementById('btn-custom-block');
+                    const btnReset = document.getElementById('btn-reset-timeline');
+                    const trashZone = document.getElementById('trash-zone');
+
+                    if (mode === 'admin') {
+                        btnAdmin.className = 'px-3 py-1 text-xs font-medium rounded-md transition-all bg-extralife-500 text-white shadow shadow-extralife-glow';
+                        btnViewer.className = 'px-3 py-1 text-xs font-medium rounded-md transition-all text-slate-400 hover:text-white';
+                        btnCustom.classList.remove('hidden');
+                        btnReset.classList.remove('hidden');
+                        trashZone.classList.remove('hidden');
+                        trashZone.classList.add('flex');
+                    } else {
+                        btnViewer.className = 'px-3 py-1 text-xs font-medium rounded-md transition-all bg-extralife-500 text-white shadow shadow-extralife-glow';
+                        btnAdmin.className = 'px-3 py-1 text-xs font-medium rounded-md transition-all text-slate-400 hover:text-white';
+                        btnCustom.classList.add('hidden');
+                        btnReset.classList.add('hidden');
+                        trashZone.classList.add('hidden');
+                        trashZone.classList.remove('flex');
+                    }
+                    renderTimeline();
+                    renderPool();
+                }
+
+                function setupTrashZone() {
+                    const trash = document.getElementById('trash-zone');
+                    trash.ondragover = (e) => {
+                        e.preventDefault();
+                        trash.classList.add('trash-drag-over');
+                    };
+                    trash.ondragleave = () => {
+                        trash.classList.remove('trash-drag-over');
+                    };
+                    trash.ondrop = (e) => {
+                        e.preventDefault();
+                        trash.classList.remove('trash-drag-over');
+                        const gameId = e.dataTransfer.getData('gameId');
+                        const sourceHour = e.dataTransfer.getData('sourceHour');
+                        const blockSpan = parseInt(e.dataTransfer.getData('blockSpan') || '1');
+
+                        if (gameId) {
+                            gamePool = gamePool.filter(g => g.id !== gameId);
+                        } else if (sourceHour !== "") {
+                            const srcIdx = parseInt(sourceHour);
+                            for (let i = 0; i < blockSpan; i++) {
+                                if (timeline[srcIdx + i]) {
+                                    timeline[srcIdx + i].assignedGame = null;
+                                    timeline[srcIdx + i].splitOverride = false;
+                                }
+                            }
+                        }
+
+                        saveToStorage();
+                        renderTimeline();
+                        renderPool();
+                        updateStats();
+                    };
+                }
+
+                function calculateBlocks() {
+                    const blocks = [];
+                    let i = 0;
+                    while (i < 25) {
+                        const currentSlot = timeline[i];
+                        if (!currentSlot.assignedGame) {
+                            blocks.push({ type: 'empty', startIdx: i, span: 1, slots: [currentSlot] });
+                            i++;
+                            continue;
+                        }
+
+                        let span = 1;
+                        const game = currentSlot.assignedGame;
+
+                        while (
+                            i + span < 25 &&
+                            timeline[i + span].assignedGame &&
+                            timeline[i + span].assignedGame.id === game.id &&
+                            !timeline[i + span].splitOverride
+                        ) {
+                            const currentRow = Math.floor(i / 6);
+                            const nextRow = Math.floor((i + span) / 6);
+                            if (currentRow !== nextRow && currentRow < 3) {
+                                break;
+                            }
+                            span++;
+                        }
+
+                        blocks.push({
+                            type: 'game',
+                            startIdx: i,
+                            span: span,
+                            game: game,
+                            slots: timeline.slice(i, i + span)
+                        });
+                        i += span;
+                    }
+                    return blocks;
+                }
+
+                function renderTimeline() {
+                    const container = document.getElementById('timeline-grid');
+                    container.innerHTML = '';
+
+                    const blocks = calculateBlocks();
+
+                    blocks.forEach((block) => {
+                        const card = document.createElement('div');
+                        const spanClass = block.span > 1 ? `sm:col-span-${Math.min(block.span, 2)} lg:col-span-${block.span}` : '';
+
+                        card.className = `${spanClass} p-2.5 rounded-lg border flex flex-col justify-between transition-all min-h-[115px] ${
+                            block.type === 'game'
+                                ? 'bg-slate-950 border-extralife-500/50 shadow-md'
+                                : 'bg-slate-950/50 border-slate-800/80 border-dashed'
+                        }`;
+
+                        if (currentMode === 'admin') {
+                            card.ondragover = (e) => { e.preventDefault(); card.classList.add('drag-over'); };
+                            card.ondragleave = () => card.classList.remove('drag-over');
+                            card.ondrop = (e) => {
+                                e.preventDefault();
+                                card.classList.remove('drag-over');
+                                const gameId = e.dataTransfer.getData('gameId');
+                                const sourceHour = e.dataTransfer.getData('sourceHour');
+                                const srcSpan = parseInt(e.dataTransfer.getData('blockSpan') || '1');
+
+                                if (gameId) {
+                                    const game = gamePool.find(g => g.id === gameId);
+                                    if (game) {
+                                        timeline[block.startIdx].assignedGame = { ...game };
+                                        timeline[block.startIdx].splitOverride = false;
+                                    }
+                                } else if (sourceHour !== "") {
+                                    const srcIdx = parseInt(sourceHour);
+                                    const movingGame = timeline[srcIdx].assignedGame;
+
+                                    for (let k = 0; k < srcSpan; k++) {
+                                        timeline[srcIdx + k].assignedGame = null;
+                                        timeline[srcIdx + k].splitOverride = false;
+                                    }
+                                    timeline[block.startIdx].assignedGame = movingGame;
+                                    timeline[block.startIdx].splitOverride = false;
+                                }
+                                saveToStorage();
+                                renderTimeline();
+                                renderPool();
+                                updateStats();
+                            };
+
+                            if (block.type === 'game') {
+                                card.draggable = true;
+                                card.ondragstart = (e) => {
+                                    e.dataTransfer.setData('sourceHour', block.startIdx);
+                                    e.dataTransfer.setData('blockSpan', block.span);
+                                };
+                            }
+                        }
+
+                        const timeText = block.span > 1
+                            ? `Hours ${block.startIdx + 1}-${block.startIdx + block.span} (${block.span} hrs)`
+                            : `Hour ${block.startIdx + 1}`;
+
+                        let contentHtml = `
+                            <div class="flex items-center justify-between text-[11px] mb-1">
+                                <span class="font-mono text-slate-400 font-semibold">${timeText}</span>
+                                <span class="text-[10px] text-extralife-400 bg-extralife-500/10 px-1.5 py-0.5 rounded border border-extralife-500/20 font-medium">${block.slots[0].timeLabel}</span>
+                            </div>
+                        `;
+
+                        if (block.type === 'game') {
+                            const g = block.game;
+                            contentHtml += `
+                                <div class="flex items-start gap-2 flex-1 mt-1">
+                                    ${g.image ? `<img src="${g.image}" class="w-9 h-9 object-cover rounded border border-slate-700 flex-shrink-0">` : ''}
+                                    <div class="overflow-hidden flex-1">
+                                        <h4 class="text-xs font-bold text-slate-100 truncate">${g.title}</h4>
+                                        <p class="text-[10px] text-extralife-400 truncate">By ${g.author}</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between mt-2 pt-1 border-t border-slate-800/80 text-[10px]">
+                                    <span class="text-slate-400">${g.players || '1 Player'}</span>
+                                    <div class="flex items-center gap-1.5">
+                                        ${block.span > 1 && currentMode === 'admin' ? `<button onclick="splitBlock(${block.startIdx},${block.span})" class="text-amber-400 hover:text-amber-300 font-medium px-1 bg-amber-950/40 border border-amber-800/40 rounded" title="Split into individual hours">Split</button>` : ''}
+                                        ${currentMode === 'admin' ? `<button onclick="unassignBlock(${block.startIdx},${block.span})" class="text-slate-400 hover:text-red-400 font-medium">Unassign</button>` : ''}
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            contentHtml += `
+                                <div class="flex-1 flex items-center justify-center text-center my-auto">
+                                    <span class="text-xs text-slate-600 italic">${currentMode === 'admin' ? 'Drop game here' : 'Open Slot'}</span>
+                                </div>
+                            `;
+                        }
+
+                        card.innerHTML = contentHtml;
+                        container.appendChild(card);
+                    });
+                }
+
+                function renderPool() {
+                    const container = document.getElementById('game-pool');
+                    container.innerHTML = '';
+                    document.getElementById('pool-count').innerText = `${gamePool.length} games available`;
+
+                    if (gamePool.length === 0) {
+                        container.innerHTML = `<div class="col-span-2 py-8 text-center text-xs text-slate-500 italic">No games in submission pool. Submit some using the form!</div>`;
+                        return;
+                    }
+
+                    gamePool.forEach((game) => {
+                        const card = document.createElement('div');
+                        card.className = "bg-slate-950 border border-slate-800/80 hover:border-extralife-500/50 p-2.5 rounded-lg flex items-center justify-between gap-3 transition shadow-sm";
+
+                        if (currentMode === 'admin') {
+                            card.draggable = true;
+                            card.ondragstart = (e) => {
+                                e.dataTransfer.setData('gameId', game.id);
+                            };
+                            card.classList.add('cursor-grab', 'active:cursor-grabbing');
+                        }
+
+                        card.innerHTML = `
+                            <div class="flex items-center gap-2.5 overflow-hidden">
+                                ${game.image ? `<img src="${game.image}" class="w-10 h-10 object-cover rounded border border-slate-700 flex-shrink-0">` : `<div class="w-10 h-10 rounded bg-slate-900 border border-slate-800 flex items-center justify-center text-extralife-400 font-bold text-xs flex-shrink-0">${game.title.charAt(0)}</div>`}
+                                <div class="overflow-hidden">
+                                    <h4 class="text-xs font-bold text-slate-200 truncate">${game.title}</h4>
+                                    <p class="text-[10px] text-extralife-400 truncate">${game.notes || 'No notes'} &bull; <span class="text-slate-400">By ${game.author}</span></p>
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-end gap-1 flex-shrink-0">
+                                <span class="text-[10px] bg-extralife-500/10 text-extralife-400 border border-extralife-500/20 px-2 py-0.5 rounded font-medium">${game.players || '1 Player'}</span>
+                                ${currentMode === 'admin' ? `<button onclick="deleteFromPool('${game.id}')" class="text-slate-500 hover:text-red-400 p-0.5 ml-1" title="Delete">&times;</button>` : ''}
+                            </div>
+                        `;
+                        container.appendChild(card);
+                    });
+                }
+
+                function handleGameSubmission(e) {
+                    e.preventDefault();
+                    const title = document.getElementById('sub-title').value;
+                    const author = document.getElementById('sub-author').value;
+                    const players = document.getElementById('sub-players').value;
+                    const notes = document.getElementById('sub-notes').value;
+                    const imageInput = document.getElementById('sub-image');
+
+                    const addGameObj = (imgData) => {
+                        const newGame = {
+                            id: 'custom-' + Date.now(),
+                            title,
+                            author,
+                            players,
+                            notes,
+                            image: imgData
+                        };
+                        gamePool.push(newGame);
+                        saveToStorage();
+                        renderPool();
+                        updateStats();
+                        document.getElementById('submission-form').reset();
+                    };
+
+                    if (imageInput.files && imageInput.files[0]) {
+                        const reader = new FileReader();
+                        reader.onload = function(uploadEvent) {
+                            addGameObj(uploadEvent.target.result);
+                        };
+                        reader.readAsDataURL(imageInput.files[0]);
+                    } else {
+                        addGameObj(null);
+                    }
+                }
+
+                function unassignBlock(startIdx, span) {
+                    for (let i = 0; i < span; i++) {
+                        timeline[startIdx + i].assignedGame = null;
+                        timeline[startIdx + i].splitOverride = false;
+                    }
+                    saveToStorage();
+                    renderTimeline();
+                    renderPool();
+                    updateStats();
+                }
+
+                function splitBlock(startIdx, span) {
+                    for (let i = 1; i < span; i++) {
+                        timeline[startIdx + i].splitOverride = true;
+                    }
+                    saveToStorage();
+                    renderTimeline();
+                }
+
+                function deleteFromPool(id) {
+                    gamePool = gamePool.filter(g => g.id !== id);
+                    saveToStorage();
+                    renderPool();
+                    updateStats();
+                }
+
+                function openCustomBlockModal() {
+                    document.getElementById('custom-modal').classList.remove('hidden');
+                    document.getElementById('custom-modal').classList.add('flex');
+                }
+
+                function closeCustomBlockModal() {
+                    document.getElementById('custom-modal').classList.add('hidden');
+                    document.getElementById('custom-modal').classList.remove('flex');
+                }
+
+                function handleCustomBlock(e) {
+                    e.preventDefault();
+                    const title = document.getElementById('modal-title').value;
+
+                    gamePool.push({
+                        id: 'custom-' + Date.now(),
+                        title,
+                        author: 'KatowJo',
+                        players: '1 Player',
+                        notes: 'Custom schedule segment',
+                        image: null
+                    });
+                    closeCustomBlockModal();
+                    saveToStorage();
+                    renderPool();
+                    updateStats();
+                    document.getElementById('modal-title').value = '';
+                }
+
+                function resetTimeline() {
+                    if (confirm('Are you sure you want to clear all timeline slots?')) {
+                        timeline.forEach(slot => {
+                            slot.assignedGame = null;
+                            slot.splitOverride = false;
+                        });
+                        saveToStorage();
+                        renderTimeline();
+                        renderPool();
+                        updateStats();
+                    }
+                }
+
+                function updateStats() {
+                    const filledCount = timeline.filter(s => s.assignedGame !== null).length;
+                    document.getElementById('stat-filled').innerText = filledCount;
+                    document.getElementById('stat-submissions').innerText = gamePool.length;
+                }
+
+                function saveToStorage() {
+                    localStorage.setItem('charity_timeline_v7', JSON.stringify(timeline));
+                    localStorage.setItem('charity_pool_v7', JSON.stringify(gamePool));
+                }
+
+                function loadFromStorage() {
+                    const savedTimeline = localStorage.getItem('charity_timeline_v7');
+                    const savedPool = localStorage.getItem('charity_pool_v7');
+                    if (savedTimeline) timeline = JSON.parse(savedTimeline);
+                    if (savedPool) gamePool = JSON.parse(savedPool);
+                }
+
+                window.onload = initApp;
+    </script>
+</body>
+</html>
