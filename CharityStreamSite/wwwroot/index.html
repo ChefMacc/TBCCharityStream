@@ -64,7 +64,7 @@
 
                 <div>
                     <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
-                        Bear Clan 25 Hour Stream
+                        Nov 7th - 8th, 2026 Bear Clan 25 Hour Stream
                         <span class="text-xs uppercase px-2 py-0.5 rounded-full bg-extralife-500/20 text-extralife-400 border border-extralife-500/30 font-semibold">Extra Life</span>
                     </h1>
                     <p class="text-xs text-slate-400"> &bull; Stream Scheduler &bull; </p>
@@ -81,7 +81,7 @@
 
                 <div class="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-800">
                     <button id="mode-viewer" onclick="setMode('viewer')" class="px-3 py-1 text-xs font-medium rounded-md transition-all bg-extralife-500 text-white shadow shadow-extralife-glow">
-                        Viewer Mode
+                        Public Mode
                     </button>
                     <button id="mode-admin" onclick="requestAdminAccess()" class="px-3 py-1 text-xs font-medium rounded-md transition-all text-slate-400 hover:text-white">
                         KatowJo Mode
@@ -98,7 +98,7 @@
             <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-2">
                     <h2 class="text-sm font-bold uppercase tracking-wider text-extralife-400">25-Hour Stream Schedule</h2>
-                    <span class="text-xs text-slate-400">(Drag games into slots, adjacent identical games auto-merge into blocks)</span>
+                    <span class="text-xs text-slate-400">(All times in Eastern Standard Time)</span>
                 </div>
                 <div class="flex items-center gap-2">
                     <button onclick="openCustomBlockModal()" id="btn-custom-block" class="hidden text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded border border-slate-700 transition">
@@ -173,7 +173,7 @@
                 <div class="flex items-center justify-between mb-3 gap-2">
                     <div>
                         <h2 class="text-sm font-bold uppercase tracking-wider text-extralife-400">Community Submission Pool</h2>
-                        <p class="text-xs text-slate-400">Drag items into timeline slots (KatowJo Mode) or preview suggestions.</p>
+                        <p class="text-xs text-slate-400">Add a game you are interested in seeing/playing on the stream!</p>
                     </div>
 
                     <div class="flex items-center gap-3">
@@ -266,18 +266,28 @@ const firebaseConfig = {
                 // Global Application State
                 window.currentMode = 'viewer';
                 window.ADMIN_PASSWORD = "ExtraLyfe!";
+/*
+function getDynamicTimeLabel(hourIndex) {
+    const startHour = (14 + hourIndex) % 24; // 14 = 2:00 PM
+    const ampm = startHour >= 12 ? 'PM' : 'AM';
+    const displayHour = startHour % 12 === 0 ? 12 : startHour % 12;
+    const dayNum = hourIndex < 10 ? 1 : 2; // First 10 hours are Day 1, midnight onward is Day 2
+    return `${displayHour}:00 ${ampm} (Day ${dayNum})`;
+}*/
 
-                window.timeline = Array.from({length: 25}, (_, i) => {
-                    const startHour = (12 + i) % 24;
-                    const ampm = startHour >= 12 ? 'PM' : 'AM';
-                    const displayHour = startHour % 12 === 0 ? 12 : startHour % 12;
-                    const dayNum = i < 12 ? 1 : 2;
-                    return {
-                        hourIndex: i,
-                        timeLabel: `${displayHour}:00 ${ampm} (Day ${dayNum})`,
-                        assignedGame: null,
-                        splitOverride: false
-                    };
+
+
+                window.timeline = Array.from({ length: 25 }, (_, i) => {
+                      const startHour = (14 + i) % 24; // 14 represents 2:00 PM in 24-hour time
+                       const ampm = startHour >= 12 ? 'PM' : 'AM';
+                      const displayHour = startHour % 12 === 0 ? 12 : startHour % 12;
+                    const dayNum = i < 10 ? 1 : 2; // Hour indices 0-9 (2 PM to 11 PM) are Day 1; 10+ (Midnight onward) are Day 2
+                 return {
+                         hourIndex: i,
+                     timeLabel: `${displayHour}:00 ${ampm} (Day ${dayNum})`,
+                         assignedGame: null,
+                       splitOverride: false
+                   };
                 });
 
                 window.gamePool = [
@@ -288,19 +298,30 @@ const firebaseConfig = {
                 ];
 
                 // Realtime Sync Listener across all clients worldwide
-                onSnapshot(stateDocRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        const data = docSnap.data();
-                        if (data.timeline) window.timeline = data.timeline;
-                        if (data.gamePool) window.gamePool = data.gamePool;
-                        renderTimeline();
-                        renderPool();
-                        updateStats();
-                    } else {
-                        // First time setup - seed Firestore with defaults
-                        saveToFirestore();
-                    }
-                });
+           onSnapshot(stateDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.timeline) {
+              window.timeline = data.timeline.map((slot, i) => {
+                  const startHour = (14 + i) % 24; // 14 represents 2:00 PM
+                  const ampm = startHour >= 12 ? 'PM' : 'AM';
+                  const displayHour = startHour % 12 === 0 ? 12 : startHour % 12;
+                  const dayNum = i < 10 ? 1 : 2;
+                  return {
+                      ...slot,
+                      timeLabel: `${displayHour}:00 ${ampm} (Day ${dayNum})`
+                  };
+              });
+          }
+          if (data.gamePool) window.gamePool = data.gamePool;
+          renderTimeline();
+          renderPool();
+          updateStats();
+      } else {
+          // First time setup - seed Firestore with defaults
+          saveToFirestore();
+      }
+  });
 
                 window.saveToFirestore = async function() {
                     try {
