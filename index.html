@@ -288,31 +288,30 @@ const firebaseConfig = {
                 ];
 
                 // Realtime Sync Listener across all clients worldwide
-                onSnapshot(stateDocRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        const data = docSnap.data();
-                        if (data.timeline) window.timeline = data.timeline;
-                        if (data.gamePool) window.gamePool = data.gamePool;
-                        renderTimeline();
-                        renderPool();
-                        updateStats();
-                    } else {
-                        // First time setup - seed Firestore with defaults
-                        saveToFirestore();
-                    }
-                });
-
-                window.saveToFirestore = async function() {
-                    try {
-                        await setDoc(stateDocRef, {
-                            timeline: window.timeline,
-                            gamePool: window.gamePool,
-                            updatedAt: new Date().toISOString()
-                        });
-                    } catch (e) {
-                        console.error("Error writing to Firebase Firestore: ", e);
-                    }
-                };
+               onSnapshot(stateDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.timeline) {
+              window.timeline = data.timeline.map((slot, i) => {
+                  const startHour = (14 + i) % 24; // 14 represents 2:00 PM
+                  const ampm = startHour >= 12 ? 'PM' : 'AM';
+                  const displayHour = startHour % 12 === 0 ? 12 : startHour % 12;
+                  const dayNum = i < 10 ? 1 : 2;
+                  return {
+                      ...slot,
+                      timeLabel: `${displayHour}:00 ${ampm} (Day ${dayNum})`
+                  };
+              });
+          }
+          if (data.gamePool) window.gamePool = data.gamePool;
+          renderTimeline();
+          renderPool();
+          updateStats();
+      } else {
+          // First time setup - seed Firestore with defaults
+          saveToFirestore();
+      }
+  });
 
                 window.onload = function() {
                     setupTrashZone();
